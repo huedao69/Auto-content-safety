@@ -1,0 +1,44 @@
+name: chay
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 */2 * * *"  # 2 giờ/lần
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Verify import (debug)
+        run: |
+          python - <<'PY'
+          import sys, pkgutil, os
+          print("cwd:", os.getcwd())
+          print("has 'app'?:", bool(pkgutil.find_loader("app")))
+          PY
+
+      - name: Run safe mode once
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          WORDPRESS_BASE_URL: ${{ secrets.WORDPRESS_BASE_URL }}
+          WORDPRESS_USERNAME: ${{ secrets.WORDPRESS_USERNAME }}
+          WORDPRESS_APP_PASSWORD: ${{ secrets.WORDPRESS_APP_PASSWORD }}
+        run: |
+          # Nếu dự án để app/ ở ngay gốc repo:
+          PYTHONPATH=${{ github.workspace }} python -m app.main --once
+          # Nếu bạn dùng layout src/app/main.py thì thay bằng:
+          # PYTHONPATH=${{ github.workspace }}/src python -m app.main --once
